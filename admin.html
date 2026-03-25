@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRICK A4IF | Admin Terminal</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root { --gold: #d4af37; --navy: #020617; --panel: #1e293b; --red: #ef4444; --green: #10b981; }
+        body { background: var(--navy); color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        
+        /* তড়িৎ ন্যাভিগেশন */
+        .admin-nav { display: flex; gap: 15px; background: var(--panel); padding: 15px; border-radius: 15px; border-bottom: 3px solid var(--gold); margin-bottom: 25px; }
+        .nav-btn { padding: 12px 25px; background: rgba(255,255,255,0.05); border: 1px solid var(--gold); color: #fff; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .nav-btn.active { background: var(--gold); color: #000; }
+
+        .content-section { display: none; }
+        .content-section.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ইউজার টেবিল স্টাইল */
+        .table-wrapper { overflow-x: auto; background: var(--panel); border-radius: 20px; padding: 10px; border: 1px solid rgba(212, 175, 55, 0.2); }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #334155; font-size: 13px; }
+        th { color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
+        .status-badge { padding: 4px 10px; border-radius: 5px; font-size: 10px; font-weight: 900; }
+
+        /* ফুল টুলস গ্রিড (ইউজারের মতো) */
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+        .input-box { display: flex; flex-direction: column; gap: 8px; background: #0f172a; padding: 15px; border-radius: 12px; border: 1px solid #334155; }
+        .input-box label { font-size: 10px; color: var(--gold); font-weight: bold; text-transform: uppercase; }
+        .input-box input { background: transparent; border: 1px solid #475569; color: #fff; padding: 12px; border-radius: 8px; outline: none; transition: 0.3s; }
+        .input-box input:focus { border-color: var(--gold); }
+
+        .btn-action { width: 100%; padding: 20px; background: var(--green); color: #fff; border: none; border-radius: 15px; margin-top: 25px; cursor: pointer; font-weight: 900; font-size: 16px; text-transform: uppercase; }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3); }
+    </style>
+</head>
+<body>
+
+<div style="text-align:center; margin-bottom:30px;">
+    <h1 style="color:var(--gold); margin:0;">TRICK A4IF | COMMAND CENTER</h1>
+    <p style="font-size:11px; color:#94a3b8; letter-spacing:2px;">MASTER ADMINISTRATIVE INTERFACE</p>
+</div>
+
+<div class="admin-nav">
+    <button class="nav-btn active" onclick="toggleSection('user-section')"><i class="fas fa-users"></i> ইউজার কন্ট্রোল</button>
+    <button class="nav-btn" onclick="toggleSection('tool-section')"><i class="fas fa-tools"></i> ফুল ট্রেডমার্ক টুলস</button>
+</div>
+
+<div id="user-section" class="content-section active">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>অপারেটর নাম</th>
+                    <th>ইমেইল</th>
+                    <th>আইপি/মেটা</th>
+                    <th>অবস্থা</th>
+                    <th>অ্যাকশন</th>
+                </tr>
+            </thead>
+            <tbody id="user-rows">
+                <tr><td colspan="5" style="text-align:center;">সিস্টেম ডাটা রিড করছে...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="tool-section" class="content-section">
+    <div class="tools-grid" id="admin-inputs">
+        </div>
+    <button class="btn-action" onclick="submitAsAdmin()">🚀 এডমিন হিসেবে ডাটা পাবলিশ করুন</button>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyC6jYGw54iAufQBaPICdD4nf1ey6Vmazgg", authDomain: "dpdttrademark.firebaseapp.com", projectId: "dpdttrademark", databaseURL: "https://dpdttrademark-default-rtdb.firebaseio.com", appId: "1:236133082240:web:8f03bbb969d1c01f2af265" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function toggleSection(id) {
+        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    // --- ইউজার হ্যান্ডলিং লজিক ---
+    db.ref('users').on('value', snap => {
+        const tbody = document.getElementById('user-rows');
+        tbody.innerHTML = "";
+        snap.forEach(child => {
+            const u = child.val();
+            const statusColor = u.status === 'approved' ? '#10b981' : '#ef4444';
+            tbody.innerHTML += `
+                <tr>
+                    <td><b>${u.name}</b></td>
+                    <td>${u.email}</td>
+                    <td><small>${u.ip || 'N/A'}</small></td>
+                    <td><span class="status-badge" style="background:${statusColor}22; color:${statusColor}">${u.status.toUpperCase()}</span></td>
+                    <td>
+                        <button onclick="changeStatus('${child.key}', 'approved')" style="background:#10b981; border:none; color:#fff; padding:5px 10px; border-radius:5px; cursor:pointer;">Approve</button>
+                        <button onclick="removeUser('${child.key}')" style="background:#ef4444; border:none; color:#fff; padding:5px 10px; border-radius:5px; cursor:pointer; margin-left:5px;">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+
+    function changeStatus(uid, status) {
+        db.ref('users/' + uid).update({ status: status })
+        .then(() => Swal.fire('সফল!', 'ইউজার অনুমোদিত হয়েছে।', 'success'));
+    }
+
+    function removeUser(uid) {
+        Swal.fire({ title: 'মুছে ফেলবেন?', icon: 'warning', showCancelButton: true, confirmButtonText: 'হ্যাঁ' })
+        .then(res => { if(res.isConfirmed) db.ref('users/' + uid).remove(); });
+    }
+
+    // --- এডমিন টুলস জেনারেটর ---
+    const labels = ["Form Type", "Serial Number", "Certificate Title", "TM Number (ID)", "Registration Date", "Sealing Date", "Class", "Owner Name", "Full Address", "Service Detail", "Handwritten SL", "Signatory Name", "Designation", "Seal Text", "Validity Period", "Limitations", "Brand Wordmark", "Logo URL"];
+    const inputGrid = document.getElementById('admin-inputs');
+    labels.forEach((l, i) => {
+        inputGrid.innerHTML += `
+            <div class="input-box">
+                <label>${i+1}. ${l}</label>
+                <input type="text" id="adm_f${i+1}" placeholder="পাসিং ${l}...">
+            </div>
+        `;
+    });
+
+    async function submitAsAdmin() {
+        const tmId = document.getElementById('adm_f4').value.trim().toUpperCase();
+        if(tmId.length < 4) return Swal.fire('ভুল!', 'সঠিক TM Number দিন।', 'error');
+
+        let data = {};
+        for(let i=1; i<=18; i++) data['f'+i] = document.getElementById('adm_f'+i).value.trim();
+        data.tmId = tmId;
+        data.timestamp = Date.now();
+        data.operator = "MASTER_ADMIN";
+
+        try {
+            await db.ref('certificates/' + tmId).set(data);
+            Swal.fire('পাবলিশড!', 'এডমিন হিসেবে ডাটা পাবলিশ হয়েছে।', 'success');
+        } catch(e) { Swal.fire('এরর', e.message, 'error'); }
+    }
+</script>
+</body>
+      </html>
